@@ -1,10 +1,10 @@
-import urllib2
 import json
-import re
 import logging
 import os
-from string import Template
+import urllib
+import urllib2
 from datetime import datetime
+from string import Template
 from bs4 import BeautifulSoup
 
 """ NOTES 
@@ -28,7 +28,9 @@ in the 2008 season there appears to be no "preview, recap, or notebook" content
 logging.basicConfig(filename='../../../xdata.log', level=logging.DEBUG)
 gameInfoURLTemplate = Template('http://www.nba.com/games/$gameCode/gameinfo.html')
 gameDetailURLTemplate = Template('http://stats.nba.com/stats/boxscore?GameID=00$gameID&RangeType=0&StartPeriod=0&EndPeriod=0&StartRange=0&EndRange=0')
-currentGameId = 21300553
+#google_espn=Template('https://www.google.com/search?q=site%3Aespn.go.com%2Fnba%2Frecap+"$awayTeam+vs.+$homeTeam"+$gameDate')
+espn_search=Template('http://espn.go.com/nba/schedule?date=$gameDate|.*$winningTeam.*$winningScore.*$losingTeam.*$losingScore|$currentGameId')
+currentGameId = 21300550
 outputDirPrefix = "../../../output/"
 gameIdFile = "%sGame.ID" % outputDirPrefix
 opener = urllib2.build_opener()
@@ -45,8 +47,8 @@ if os.path.exists(gameIdFile):
             currentGameId = int(idFile.read())
             logging.debug("Game.ID file found. Starting process with gameId: %d" % currentGameId)
             print 'Game.ID file found. Starting process with gameId: %d' % currentGameId
-        except Exception:
-            logging.error("Unable to read Game.ID file. Going ahead with default gameId: %d" % currentGameId)
+        except Exception as e:
+            logging.error("Unable to read Game.ID file. Going ahead with default gameId: %d\n%s" % (currentGameId, e))
             print 'Unable to read Game.ID file. Going ahead with default gameId: %d' % currentGameId
     idFile.close()
 while True:
@@ -67,21 +69,35 @@ while True:
     gameId = content['parameters']['GameID']
     gameDate = content['resultSets'][0]['rowSet'][0][0]
     gameCode = content['resultSets'][0]['rowSet'][0][5]
+    homeTeamCity = content['resultSets'][1]['rowSet'][1][5]
+    homeTeamScore = content['resultSets'][1]['rowSet'][1][21]
+    awayTeamCity = content['resultSets'][1]['rowSet'][0][5]
+    awayTeamScore = content['resultSets'][1]['rowSet'][0][21]
     playerData = ''
     for player in content['resultSets'][4]['rowSet']:
         playerData += player[5] + ", " + player[3] + "\n"
     
+    """ Generate EPSN URLs """
+    gameDate = datetime.strptime(gameDate, "%Y-%m-%dT%H:%M:%S").strftime("%Y%m%d")
+    with open("%sespn_search_urls.txt" % outputDirPrefix, "a+") as googleUrls:
+        if (int(awayTeamScore) > int(homeTeamScore)):
+            winningTeamCity = awayTeamCity
+            winningTeamScore = awayTeamScore
+            losingTeamCity = homeTeamCity
+            losingTeamScore = homeTeamScore
+        else :
+            winningTeamCity = homeTeamCity
+            winningTeamScore = homeTeamScore
+            losingTeamCity = awayTeamCity
+            losingTeamScore = awayTeamScore
+        googleUrls.write(espn_search.substitute(gameDate=urllib.quote_plus(gameDate), winningTeam=winningTeamCity, winningScore=winningTeamScore, losingTeam=losingTeamCity, losingScore=losingTeamScore, currentGameId=currentGameId) + "\n")
+    googleUrls.close()
+    
     """ Generate Follow Up URL """
-    match = re.search('(\d{4})-(\d{1,2})-(\d{1,2})', gameDate)
-    year = match.group(1)
-    month = match.group(2)
-    day = match.group(3)
-    dateURL = year+month+day
     gameInfoURL = gameInfoURLTemplate.substitute(gameCode=gameCode)
     logging.debug('Game Info URL:%s' % gameInfoURL)
     
     """ Get Unstructured Text """
-    nbaStatUnstructured = urllib2.Request(gameInfoURL, None, {})
     unstructured = opener.open(gameInfoURL)
     soup = BeautifulSoup(unstructured)
     
