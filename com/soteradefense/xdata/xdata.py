@@ -28,7 +28,6 @@ in the 2008 season there appears to be no "preview, recap, or notebook" content
 logging.basicConfig(filename='../../../xdata.log', level=logging.DEBUG)
 gameInfoURLTemplate = Template('http://www.nba.com/games/$gameCode/gameinfo.html')
 gameDetailURLTemplate = Template('http://stats.nba.com/stats/boxscore?GameID=00$gameID&RangeType=0&StartPeriod=0&EndPeriod=0&StartRange=0&EndRange=0')
-#google_espn=Template('https://www.google.com/search?q=site%3Aespn.go.com%2Fnba%2Frecap+"$awayTeam+vs.+$homeTeam"+$gameDate')
 espn_search=Template('http://espn.go.com/nba/schedule?date=$gameDate|.*$winningTeam.*$winningScore.*$losingTeam.*$losingScore|$currentGameId')
 currentGameId = 21300550
 outputDirPrefix = "../../../output/"
