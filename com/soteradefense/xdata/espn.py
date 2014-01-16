@@ -31,6 +31,7 @@ commentTemplate = Template("https://www.facebook.com/plugins/comments.php?api_ke
 outputDirPrefix = "../../../output/"
 espnUrlFile = "%sespn_search_urls.txt" % outputDirPrefix
 opener = urllib2.build_opener()
+opener.addheaders = [('User-agent','Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
 
 """ Pull comments and replies out of the HTML element """
 def processFeedback(commentRoot, commentsFile):
@@ -75,3 +76,4 @@ if os.path.exists(espnUrlFile):
                 logging.error("Unable to open URL: %s \n%s " % (url, e))
                 print "Unable to open URL: %s" % url
     urlFile.close()
+opener.close()

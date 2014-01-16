@@ -28,11 +28,13 @@ in the 2008 season there appears to be no "preview, recap, or notebook" content
 logging.basicConfig(filename='../../../xdata.log', level=logging.DEBUG)
 gameInfoURLTemplate = Template('http://www.nba.com/games/$gameCode/gameinfo.html')
 gameDetailURLTemplate = Template('http://stats.nba.com/stats/boxscore?GameID=00$gameID&RangeType=0&StartPeriod=0&EndPeriod=0&StartRange=0&EndRange=0')
-espn_search=Template('http://espn.go.com/nba/schedule?date=$gameDate|.*$winningTeam.*$winningScore.*$losingTeam.*$losingScore|$currentGameId')
-currentGameId = 21300550
+espnSearch=Template('http://espn.go.com/nba/schedule?date=$gameDate|.*$winningTeam.*$winningScore.*$losingTeam.*$losingScore|$currentGameId')
+yahooGame=Template('http://sports.yahoo.com/nba/scoreboard/?date=$gameDate|/nba/$awayTeamCity-$awayTeamName-$homeTeamCity-$homeTeamName.*|$currentGameId')
+currentGameId = 21300570
 outputDirPrefix = "../../../output/"
 gameIdFile = "%sGame.ID" % outputDirPrefix
 opener = urllib2.build_opener()
+opener.addheaders = [('User-agent','Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
 startTime = datetime.now()
 noDataMsg = 'No Data Available'
 
@@ -57,7 +59,6 @@ while True:
     nbaStatStructured = urllib2.Request(currentURL, None, {} )
     url = opener.open(nbaStatStructured)
     content = json.load(url, encoding='utf-8')
-    
     """ Pull Out Important Information """
     status = content['resultSets'][0]['rowSet'][0][4]
     if status != 'Final' and status != 'PPD':
@@ -68,17 +69,31 @@ while True:
     gameId = content['parameters']['GameID']
     gameDate = content['resultSets'][0]['rowSet'][0][0]
     gameCode = content['resultSets'][0]['rowSet'][0][5]
+    """ Get Home Team Data """
     homeTeamCity = content['resultSets'][1]['rowSet'][1][5]
     homeTeamScore = content['resultSets'][1]['rowSet'][1][21]
+    homeTeamId = content['resultSets'][1]['rowSet'][1][3]
+    if content['resultSets'][5]['rowSet'][0][1] == homeTeamId:
+        homeTeamName= content['resultSets'][5]['rowSet'][0][2]
+    else:
+        homeTeamName= content['resultSets'][5]['rowSet'][1][2]
+    """ Get Away Team Data """
     awayTeamCity = content['resultSets'][1]['rowSet'][0][5]
     awayTeamScore = content['resultSets'][1]['rowSet'][0][21]
+    awayTeamId = content['resultSets'][1]['rowSet'][0][3]
+    awayTeamName = content['resultSets'][5]['rowSet'][0][2]
+    if content['resultSets'][5]['rowSet'][0][1] == awayTeamId:
+        awayTeamName= content['resultSets'][5]['rowSet'][0][2]
+    else:
+        awayTeamName= content['resultSets'][5]['rowSet'][1][2]
+    """ Get Player Data """
     playerData = ''
     for player in content['resultSets'][4]['rowSet']:
         playerData += player[5] + ", " + player[3] + "\n"
     
     """ Generate EPSN URLs """
-    gameDate = datetime.strptime(gameDate, "%Y-%m-%dT%H:%M:%S").strftime("%Y%m%d")
-    with open("%sespn_search_urls.txt" % outputDirPrefix, "a+") as googleUrls:
+    espnGameDate = datetime.strptime(gameDate, "%Y-%m-%dT%H:%M:%S").strftime("%Y%m%d")
+    with open("%sespn_search_urls.txt" % outputDirPrefix, "a+") as espnUrls:
         if (int(awayTeamScore) > int(homeTeamScore)):
             winningTeamCity = awayTeamCity
             winningTeamScore = awayTeamScore
@@ -89,8 +104,14 @@ while True:
             winningTeamScore = homeTeamScore
             losingTeamCity = awayTeamCity
             losingTeamScore = awayTeamScore
-        googleUrls.write(espn_search.substitute(gameDate=urllib.quote_plus(gameDate), winningTeam=winningTeamCity, winningScore=winningTeamScore, losingTeam=losingTeamCity, losingScore=losingTeamScore, currentGameId=currentGameId) + "\n")
-    googleUrls.close()
+        espnUrls.write(espnSearch.substitute(gameDate=urllib.quote_plus(espnGameDate), winningTeam=winningTeamCity, winningScore=winningTeamScore, losingTeam=losingTeamCity, losingScore=losingTeamScore, currentGameId=currentGameId) + "\n")
+    espnUrls.close()
+    
+    """ Generate Yahoo URLs """
+    yahooGameDate = datetime.strptime(gameDate, "%Y-%m-%dT%H:%M:%S").strftime("%Y-%m-%d")
+    with open("%syahoo_search_urls.txt" % outputDirPrefix, "a+") as yahooUrls:
+        yahooUrls.write(yahooGame.substitute(gameDate=urllib.quote_plus(yahooGameDate), awayTeamCity=awayTeamCity.replace(' ','-').lower(), awayTeamName=awayTeamName.replace(' ','-').lower(), homeTeamCity=homeTeamCity.replace(' ','-').lower(), homeTeamName=homeTeamName.replace(' ','-').lower(), currentGameId=currentGameId) + "\n")
+    yahooUrls.close()
     
     """ Generate Follow Up URL """
     gameInfoURL = gameInfoURLTemplate.substitute(gameCode=gameCode)
