@@ -37,6 +37,7 @@ opener = urllib2.build_opener()
 opener.addheaders = [('User-agent','Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
 startTime = datetime.now()
 noDataMsg = 'No Data Available'
+gamesProcessed = 0
 
 print 'Starting Retrieval'
 logging.info('Staring Retrieval')
@@ -49,15 +50,14 @@ if os.path.exists(gameIdFile):
             logging.debug("Game.ID file found. Starting process with gameId: %d" % currentGameId)
             print 'Game.ID file found. Starting process with gameId: %d' % currentGameId
         except Exception as e:
-            logging.error("Unable to read Game.ID file. Going ahead with default gameId: %d\n%s" % (currentGameId, e))
+            logging.exception("Unable to read Game.ID file. Going ahead with default gameId: %d" % currentGameId)
             print 'Unable to read Game.ID file. Going ahead with default gameId: %d' % currentGameId
     idFile.close()
 while True:
     """ Get the structured text """
     currentURL = gameDetailURLTemplate.substitute(gameID=currentGameId)
     logging.debug('Current URL:%s' % currentURL)
-    nbaStatStructured = urllib2.Request(currentURL, None, {} )
-    url = opener.open(nbaStatStructured)
+    url = opener.open(currentURL)
     content = json.load(url, encoding='utf-8')
     """ Pull Out Important Information """
     status = content['resultSets'][0]['rowSet'][0][4]
@@ -66,26 +66,28 @@ while True:
             idFile.write(str(currentGameId))
         idFile.close()
         break;
+    """ Get Game Data """
     gameId = content['parameters']['GameID']
     gameDate = content['resultSets'][0]['rowSet'][0][0]
     gameCode = content['resultSets'][0]['rowSet'][0][5]
-    """ Get Home Team Data """
-    homeTeamCity = content['resultSets'][1]['rowSet'][1][5]
-    homeTeamScore = content['resultSets'][1]['rowSet'][1][21]
-    homeTeamId = content['resultSets'][1]['rowSet'][1][3]
+    """ Get Team Data """
+    homeTeamId = content['resultSets'][0]['rowSet'][0][6]
+    if content['resultSets'][1]['rowSet'][0][3] == homeTeamId:
+        homeTeamCity = content['resultSets'][1]['rowSet'][0][5]
+        homeTeamScore = content['resultSets'][1]['rowSet'][0][21]
+        awayTeamCity = content['resultSets'][1]['rowSet'][1][5]
+        awayTeamScore = content['resultSets'][1]['rowSet'][1][21]
+    else:
+        homeTeamCity = content['resultSets'][1]['rowSet'][1][5]
+        homeTeamScore = content['resultSets'][1]['rowSet'][1][21]
+        awayTeamCity = content['resultSets'][1]['rowSet'][0][5]
+        awayTeamScore = content['resultSets'][1]['rowSet'][0][21]
     if content['resultSets'][5]['rowSet'][0][1] == homeTeamId:
         homeTeamName= content['resultSets'][5]['rowSet'][0][2]
+        awayTeamName= content['resultSets'][5]['rowSet'][1][2]
     else:
         homeTeamName= content['resultSets'][5]['rowSet'][1][2]
-    """ Get Away Team Data """
-    awayTeamCity = content['resultSets'][1]['rowSet'][0][5]
-    awayTeamScore = content['resultSets'][1]['rowSet'][0][21]
-    awayTeamId = content['resultSets'][1]['rowSet'][0][3]
-    awayTeamName = content['resultSets'][5]['rowSet'][0][2]
-    if content['resultSets'][5]['rowSet'][0][1] == awayTeamId:
         awayTeamName= content['resultSets'][5]['rowSet'][0][2]
-    else:
-        awayTeamName= content['resultSets'][5]['rowSet'][1][2]
     """ Get Player Data """
     playerData = ''
     for player in content['resultSets'][4]['rowSet']:
@@ -99,11 +101,21 @@ while True:
             winningTeamScore = awayTeamScore
             losingTeamCity = homeTeamCity
             losingTeamScore = homeTeamScore
+            """ ESPN uses team name to distinguish between the two LA teams """
+            if winningTeamCity == 'Los Angeles':
+                winningTeamCity = 'LA ' + awayTeamName
+            if losingTeamCity == 'Los Angeles':
+                losingTeamCity = 'LA ' + homeTeamName
         else :
             winningTeamCity = homeTeamCity
             winningTeamScore = homeTeamScore
             losingTeamCity = awayTeamCity
             losingTeamScore = awayTeamScore
+            """ ESPN uses team name to distinguish between the two LA teams """
+            if winningTeamCity == 'Los Angeles':
+                winningTeamCity = 'LA ' + homeTeamName
+            if losingTeamCity == 'Los Angeles':
+                losingTeamCity = 'LA ' + awayTeamName
         espnUrls.write(espnSearch.substitute(gameDate=urllib.quote_plus(espnGameDate), winningTeam=winningTeamCity, winningScore=winningTeamScore, losingTeam=losingTeamCity, losingScore=losingTeamScore, currentGameId=currentGameId) + "\n")
     espnUrls.close()
     
@@ -164,10 +176,12 @@ while True:
     notebookFile.close()
     
     currentGameId += 1
+    gamesProcessed += 1
+    print("."),
 """ END WHILE LOOP """
 opener.close()
 endTime = datetime.now()
 delta = endTime - startTime
 
-print 'Stopping Retrieval -- Processing Time: %d seconds' %(delta.seconds + delta.microseconds/1E6)
-logging.info('Stopping Retrieval -- Processing Time: %d seconds' %(delta.seconds + delta.microseconds/1E6))
+print '\nStopping Retrieval\n-- Processing Time: %d seconds\n-- Games Processed: %s' %(delta.seconds + delta.microseconds/1E6, gamesProcessed)
+logging.info('Stopping Retrieval\n-- Processing Time: %d seconds\n-- Games Processed: %s' %(delta.seconds + delta.microseconds/1E6, gamesProcessed))

@@ -2,6 +2,7 @@ import os
 import logging
 import urllib2
 import re
+from datetime import datetime
 from string import Template
 from bs4 import BeautifulSoup
 
@@ -32,15 +33,24 @@ outputDirPrefix = "../../../output/"
 espnUrlFile = "%sespn_search_urls.txt" % outputDirPrefix
 opener = urllib2.build_opener()
 opener.addheaders = [('User-agent','Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
+startTime = datetime.now()
+gamesProcessed = 0
+commentsProcessed = 0
+exceptionsThrown = 0
+
+print 'Starting Retrieval'
+logging.info('Staring Retrieval')
 
 """ Pull comments and replies out of the HTML element """
 def processFeedback(commentRoot, commentsFile):
+    global commentsProcessed
     commenterName = commentRoot.find("a", {"class" : "profileName"}).text
-    commenterComment = commentRoot.find("div", {"class" : "postText"}).text
+    commenterComment = commentRoot.find("div", {"class" : "postText"}).text.strip().replace('\n',' ')
     commentsFile.write("%s::%s\n" % (commenterName, commenterComment))
+    commentsProcessed += 1
     for r in commentRoot.find_all("li", {"class" : "fbFeedbackPost fbFirstPartyPost fbCommentReply"}):
         replier = r.find("a", {"class" : "profileName"}).text
-        reply = r.find("div", {"class" : "postText"}).text
+        reply = r.find("div", {"class" : "postText"}).text.strip().replace('\n',' ')
         commentsFile.write("::%s::%s::%s\n" % (commenterName, replier, reply))
 
 if os.path.exists(espnUrlFile):
@@ -50,7 +60,7 @@ if os.path.exists(espnUrlFile):
             try:
                 url, query, nbaGameId = line.split('|')
                 nbaGameId = nbaGameId.rstrip('\n')
-                logging.debug("ESPN Search URL: %s\nQuery: %s\nGameId: %s" % (url, query, nbaGameId))
+                logging.debug("\n---ESPN Search URL: %s\n---Query: %s\n---GameId: %s" % (url, query, nbaGameId))
                 unstructured = opener.open(url)
                 soup = BeautifulSoup(unstructured)
                 """ Follow the nba.com process file naming convention """
@@ -60,8 +70,8 @@ if os.path.exists(espnUrlFile):
                     """ Find the link that matches the game data """
                     for a in soup.find_all('a', text=re.compile(query), limit=1):
                         currentGameId = a['href'].split('=')[1]
-                        print "GameID: %s" % currentGameId
                         commentUrl = commentTemplate.substitute(gameId=currentGameId)
+                        logging.debug("Comment URL: %s" % commentUrl)
                         """ Poll the facebook comments page for the specific game """
                         comments = opener.open(commentUrl)
                         chatSoup = BeautifulSoup(comments)
@@ -69,11 +79,23 @@ if os.path.exists(espnUrlFile):
                         for l in chatSoup.findAll("li", {"class" : "fbFeedbackPost fbFirstPartyPost fbTopLevelComment"}):
                             processFeedback(l, commentsFile)
                 except Exception as e:
-                    logging.error("Exception when processing comments:\n%s " % (e))
+                    logging.exception("Exception when processing comments")
+                    exceptionsThrown += 1
                 finally:
                     commentsFile.close()
+                gamesProcessed += 1
+                print("."),
             except Exception as e:
-                logging.error("Unable to open URL: %s \n%s " % (url, e))
+                logging.exception("Unable to open URL: %s" % url)
                 print "Unable to open URL: %s" % url
+                exceptionsThrown += 1
+                """ Continue with remaining URLs """
+                continue
     urlFile.close()
 opener.close()
+
+endTime = datetime.now()
+delta = endTime - startTime
+
+print '\nStopping Retrieval\n-- Processing Time: %d seconds\n-- Games Processed: %s\n-- Comments Processed: %s\n-- Exceptions Caught: %s' %(delta.seconds + delta.microseconds/1E6, gamesProcessed, commentsProcessed, exceptionsThrown)
+logging.info('Stopping Retrieval\n-- Processing Time: %d seconds\n-- Games Processed: %s\n-- Comments Processed: %s\n-- Exceptions Caught: %s' %(delta.seconds + delta.microseconds/1E6, gamesProcessed, commentsProcessed, exceptionsThrown))
