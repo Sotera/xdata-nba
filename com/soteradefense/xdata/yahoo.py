@@ -87,7 +87,7 @@ if os.path.exists(yahooUrlFile):
                 print("."),
             except Exception as e:
                 logging.exception("Unable to open URL: %s" % url)
-                print "Unable to open URL: %s" % url
+                print("!"),
                 exceptionsThrown += 1
                 """ Continue with remaining URLs """
                 continue
