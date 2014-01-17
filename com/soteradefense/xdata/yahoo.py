@@ -76,9 +76,15 @@ if os.path.exists(yahooUrlFile):
                         content = json.load(response, encoding='utf-8')
                         chatSoup = BeautifulSoup(content['commentList'])
                         for l in chatSoup(attrs={"class": "comment"}):
-                            processFeedback(l, commentsFile)
+                            try:
+                                processFeedback(l, commentsFile)
+                            except Exception as e:
+                                logging.exception("Exception when processing comments")
+                                exceptionsThrown += 1
+                                """ Continue with remaining URLs """
+                                continue
                 except Exception as e:
-                    logging.exception("Exception when processing comments")
+                    logging.exception("Exception retrieving comments")
                     exceptionsThrown += 1
                     continue
                 finally:
