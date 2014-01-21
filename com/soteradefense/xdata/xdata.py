@@ -28,9 +28,10 @@ in the 2008 season there appears to be no "preview, recap, or notebook" content
 logging.basicConfig(filename='../../../xdata.log', level=logging.DEBUG)
 gameInfoURLTemplate = Template('http://www.nba.com/games/$gameCode/gameinfo.html')
 gameDetailURLTemplate = Template('http://stats.nba.com/stats/boxscore?GameID=00$gameID&RangeType=0&StartPeriod=0&EndPeriod=0&StartRange=0&EndRange=0')
+playByPlayURLTemplate = Template('http://stats.nba.com/stats/playbyplay?GameID=00$gameID&StartPeriod=0&EndPeriod=0&playbyplay=undefined')
 espnSearch=Template('http://espn.go.com/nba/schedule?date=$gameDate|.*$winningTeam.*$winningScore.*$losingTeam.*$losingScore|$currentGameId')
 yahooGame=Template('http://sports.yahoo.com/nba/scoreboard/?date=$gameDate|/nba/$awayTeamCity-$awayTeamName-$homeTeamCity-$homeTeamName.*|$currentGameId')
-currentGameId = 21300001
+currentGameId = 21200001
 outputDirPrefix = "../../../output/"
 gameIdFile = "%sGame.ID" % outputDirPrefix
 opener = urllib2.build_opener()
@@ -177,6 +178,17 @@ while True:
             notebookFile.write(noDataMsg)
         notebookFile.close()
         
+        """ Write Play-by-Play File """
+        playByPlayFileName = "%s00%d_playbyplay.json" %(outputDirPrefix, currentGameId)
+        currentURL = playByPlayURLTemplate.substitute(gameID=currentGameId)
+        logging.debug('Play-by-play URL:%s' % currentURL)
+        url = opener.open(currentURL)
+        playByPlay = json.load(url, encoding='utf-8')
+        with open(playByPlayFileName, 'w+') as outfile:
+            json.dump(playByPlay, outfile)
+        outfile.close
+        
+        """ Wrap Up """
         currentGameId += 1
         gamesProcessed += 1
         print("."),
