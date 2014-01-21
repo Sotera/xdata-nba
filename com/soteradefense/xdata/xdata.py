@@ -30,7 +30,7 @@ gameInfoURLTemplate = Template('http://www.nba.com/games/$gameCode/gameinfo.html
 gameDetailURLTemplate = Template('http://stats.nba.com/stats/boxscore?GameID=00$gameID&RangeType=0&StartPeriod=0&EndPeriod=0&StartRange=0&EndRange=0')
 espnSearch=Template('http://espn.go.com/nba/schedule?date=$gameDate|.*$winningTeam.*$winningScore.*$losingTeam.*$losingScore|$currentGameId')
 yahooGame=Template('http://sports.yahoo.com/nba/scoreboard/?date=$gameDate|/nba/$awayTeamCity-$awayTeamName-$homeTeamCity-$homeTeamName.*|$currentGameId')
-currentGameId = 21200001
+currentGameId = 21300001
 outputDirPrefix = "../../../output/"
 gameIdFile = "%sGame.ID" % outputDirPrefix
 opener = urllib2.build_opener()
@@ -180,8 +180,16 @@ while True:
         currentGameId += 1
         gamesProcessed += 1
         print("."),
+    except urllib2.HTTPError:
+        logging.exception("Error in processing game: %s" % url)
+        print("!")
+        exceptionsThrown += 1
+        with open(gameIdFile, "w+") as idFile:
+                idFile.write(str(currentGameId))
+        idFile.close()
+        break;
     except Exception as e:
-        logging.exception("Error in processign game: %s" % url)
+        logging.exception("Error in processing game: %s" % url)
         print("!"),
         currentGameId += 1
         exceptionsThrown += 1
