@@ -1,13 +1,13 @@
 import logging
+import json
 import glob
 import re
 from string import Template
 
 """ Variables """
-logging.basicConfig(filename='../../../transformer_game_comments.log', level=logging.DEBUG)
-tableTemplate=Template('$gameID\x01$commenter\x01$comment\n')
-filenamePattern = re.compile(".*(\d{10})_.*$")
-commenterPattern = re.compile("(.*?)::(.*)")
+logging.basicConfig(filename='../../../transformer_team_data.log', level=logging.DEBUG)
+tableTemplate=Template('$teamID\x01$teamCity\x01$teamName\n')
+teamPattern = re.compile("^(.*)\s(\w*)$")
 inputDir = "../../../output/"
 outputDirPrefix = "../../../"
 filesProcessed = 0
@@ -16,20 +16,20 @@ exceptionsThrown = 0
 print 'Starting Transforming'
 logging.info('Staring Transforming')
 
-gamePlayerFileName = "%sgame_comments.hive" % outputDirPrefix
+gamePlayerFileName = "%steam_data.hive" % outputDirPrefix
 with open(gamePlayerFileName, 'a+') as outfile:
-    for f in glob.glob(inputDir + "*_comments.txt"):
+    for f in glob.glob(inputDir + "teamdata.json"):
         try:
             d = open(f, 'r')
-            gameID = filenamePattern.match(f).group(1)
-            for line in d:
+            content = json.load(d, encoding='utf-8')
+            for record in content['resultSets'][0]['rowSet']:
                 try:
-                    match = commenterPattern.match(line)
-                    commenter = match.group(1)
-                    comment = match.group(2)
-                    outfile.write(tableTemplate.substitute(gameID=gameID, commenter=commenter, comment=comment))
+                    team = teamPattern.match(record[1])
+                    teamCity = team.group(1)
+                    teamName = team.group(2)
+                    outfile.write(tableTemplate.substitute(teamID=record[0], teamCity=teamCity, teamName=teamName))
                 except Exception as e:
-                    logging.exception("Error parsing line: %s" % line)
+                    logging.exception("Error in parsing json record: %s" % record)
                     continue
             d.close()
             filesProcessed += 1

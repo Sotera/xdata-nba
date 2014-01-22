@@ -75,7 +75,6 @@ CREATE TABLE IF NOT EXISTS game_play_by_play (
 
 CREATE TABLE IF NOT EXISTS team (
   team_id       INT,
-  team_abbrv    STRING,
   team_city     STRING,
   team_name     STRING
 );

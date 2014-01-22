@@ -43,5 +43,5 @@ with open(gamePlayerFileName, 'a+') as outfile:
             continue
 outfile.close()
 
-print '\nStopping Transforming\n-- Files Processed: %s\n-- Exceptions Caught: %s' %(filesProcessed, exceptionsThrown)
+print 'Stopping Transforming\n-- Files Processed: %s\n-- Exceptions Caught: %s' %(filesProcessed, exceptionsThrown)
 logging.info('Stopping Transforming\n-- Files Processed: %s\n-- Exceptions Caught: %s' %(filesProcessed, exceptionsThrown))
