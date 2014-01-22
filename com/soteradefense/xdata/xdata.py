@@ -31,6 +31,7 @@ gameDetailURLTemplate = Template('http://stats.nba.com/stats/boxscore?GameID=00$
 playByPlayURLTemplate = Template('http://stats.nba.com/stats/playbyplay?GameID=00$gameID&StartPeriod=0&EndPeriod=0&playbyplay=undefined')
 espnSearch=Template('http://espn.go.com/nba/schedule?date=$gameDate|.*$winningTeam.*$winningScore.*$losingTeam.*$losingScore|$currentGameId')
 yahooGame=Template('http://sports.yahoo.com/nba/scoreboard/?date=$gameDate|/nba/$awayTeamCity-$awayTeamName-$homeTeamCity-$homeTeamName.*|$currentGameId')
+playerJSON=Template('[$playerID, "$playerName", $teamID, "$teamCity"]')
 currentGameId = 21200001
 outputDirPrefix = "../../../output/"
 gameIdFile = "%sGame.ID" % outputDirPrefix
@@ -92,10 +93,12 @@ while True:
             homeTeamName= content['resultSets'][5]['rowSet'][1][2]
             awayTeamName= content['resultSets'][5]['rowSet'][0][2]
         """ Get Player Data """
-        playerData = ''
+        playerData = '{"resultSets":[{"headers": ["PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_CITY"], "rowset":['
         for player in content['resultSets'][4]['rowSet']:
-            playerData += player[5] + ", " + player[3] + "\n"
-        
+            playerData += playerJSON.substitute(playerID=player[4], playerName=player[5], teamID=player[1], teamCity=player[3]) + ","
+        """ strip last comma away """
+        playerData = playerData[:-1]
+        playerData += "]}]}"
         """ Generate EPSN URLs """
         espnGameDate = datetime.strptime(gameDate, "%Y-%m-%dT%H:%M:%S").strftime("%Y%m%d")
         with open("%sespn_search_urls.txt" % outputDirPrefix, "a+") as espnUrls:
@@ -146,7 +149,7 @@ while True:
             json.dump(content, outfile)
         outfile.close
         
-        playerDataFileName = "%s00%d_playerName.txt" %(outputDirPrefix, currentGameId)
+        playerDataFileName = "%s00%d_gamePlayers.json" %(outputDirPrefix, currentGameId)
         with open(playerDataFileName, 'w+') as outfile:
             outfile.write(playerData)
         outfile.close
