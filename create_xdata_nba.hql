@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS game_stats (
   game_sequence         SMALLINT,
   game_attendance       SMALLINT,
   team_home_id          INT,
-  team_visit_id         INT,
+  team_visit_id         INT
 );
 
 CREATE TABLE IF NOT EXISTS game_player_stats (
