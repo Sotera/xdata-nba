@@ -13,8 +13,11 @@ last game attempted.
 Recommend script execution order:
 
 1) xdata.py
+
 2) espn.py (for 2013 season and up), espn_jquery.py for (2010 season to 2012)
+
 3) yahoo.py (for 2013 season and up)
+
 4) xdata.py (you should only have to run this script once as the team names and IDs shouldn't change often)
 
 Once you have retrieved all the data for a season you can run the transformation scripts to create files that can be loaded into HIVE tables, order is not important.
