@@ -4,6 +4,21 @@ import glob
 import re
 from string import Template
 
+""" NOTES
+Using default field delimiter and record delimiter for Hive, \001 and \n respectively
+
+Structure of table targeted by this script:
+
+game_players (
+  game_id       STRING,
+  player_id     INT,
+  player_name   STRING,
+  team_id       INT,
+  team_city     STRING
+);
+
+"""
+
 """ Variables """
 logging.basicConfig(filename='../../../transformer_game_players.log', level=logging.DEBUG)
 tableTemplate=Template('$gameID\x01$playerID\x01$playerName\x01$teamID\x01$teamCity\n')
@@ -13,8 +28,8 @@ outputDirPrefix = "../../../"
 filesProcessed = 0
 exceptionsThrown = 0
 
-print 'Starting Transforming'
-logging.info('Staring Transforming')
+print 'Starting Transform'
+logging.info('Staring Transform')
 
 gamePlayerFileName = "%sgame_players.hive" % outputDirPrefix
 with open(gamePlayerFileName, 'a+') as outfile:
@@ -37,5 +52,5 @@ with open(gamePlayerFileName, 'a+') as outfile:
             continue
 outfile.close()
 
-print 'Stopping Transforming\n-- Files Processed: %s\n-- Exceptions Caught: %s' %(filesProcessed, exceptionsThrown)
-logging.info('Stopping Transforming\n-- Files Processed: %s\n-- Exceptions Caught: %s' %(filesProcessed, exceptionsThrown))
+print 'Stopping Transform\n-- Files Processed: %s\n-- Exceptions Caught: %s' %(filesProcessed, exceptionsThrown)
+logging.info('Stopping Transform\n-- Files Processed: %s\n-- Exceptions Caught: %s' %(filesProcessed, exceptionsThrown))
