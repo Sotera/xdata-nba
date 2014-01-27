@@ -25,6 +25,7 @@ CREATE_HIVE_TABLES=false
 STAGE_HIVE_DATA=false
 LOAD_HIVE_DATA=false
 OVERWRITE=false
+PRECANNED=false
 
 #
 # DISPLAY USAGE MESSAGE
@@ -41,14 +42,15 @@ usage() {
   -s specifies that you wish to stage hive data files into HDFS
   -o specifies that you wish to overwrite existing staged data in HDFS
   -l specifies that you wish to load hive data from HDFS to HIVE
-  -a specifies that you wish to exercise all options
+  -a specifies that you wish to exercise all options excluding -p
+  -p executes the 'pre-canned' deployment options
 EOF
 }
 
 #
 # READ COMMAND LINE ARGUMENTS
 #
-while getopts "dslaho" OPTION
+while getopts "dslahop" OPTION
 do
   case ${OPTION} in
     h)
@@ -73,6 +75,14 @@ do
       LOAD_HIVE_DATA=true
       OVERWRITE=true
       ;;
+    p)
+      CREATE_HIVE_TABLES=true
+      STAGE_HIVE_DATA=true
+      LOAD_HIVE_DATA=true
+      OVERWRITE=true
+      PRECANNED=true
+      PRECANNED_DATA_INPUT=./data/
+      PRECANNED_DATA_OUTPUT=./output/
   esac
 done
 
@@ -87,6 +97,28 @@ if ${CREATE_HIVE_TABLES} ; then
 
   echo ${bldmag}'Creating Hive Tables'${txtrst}
   $(hive -f ${SCRIPT_DIR}/create_xdata_nba.hql)
+fi
+
+#
+# UNPACK PRECANNED DATASETS
+#
+if ${PRECANNED} ; then
+  echo ${bldmag}'Unpacking Precanned Data'${txtrst}
+  if [ ! -d "$LOCAL_DATA_DIR" ]; then
+    mkdir -p $LOCAL_DATA_DIR
+  fi
+  for z in ${PRECANNED_DATA_INPUT}*.zip;
+  do
+    echo $z
+    unzip -oq ${z} -d ${PRECANNED_DATA_OUTPUT}
+  done
+  echo ${bldmag}'Transforming Data'${txtrst}
+  cd com/soteradefense/xdata/
+  for p in transformer*.py;
+  do
+    python ${p}
+  done
+  cd ../../../
 fi
 
 #
